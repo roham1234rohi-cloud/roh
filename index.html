@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PROJECT: ROHI</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg">
+<meta name="theme-color" content="#070b16">
+<style>
+:root{--bg:#070b16;--tx:#eaf2ff;--ac:#3b82f6;--ac2:#22d3ee;--wr:#ef4444;--card:#ffffff12;--bd:#ffffff1f}
+[data-theme=midnight]{--bg:#000;--ac:#818cf8;--ac2:#c4b5fd}
+[data-theme=neon]{--bg:#0a0612;--ac:#e879f9;--ac2:#22d3ee}
+[data-theme=cyber]{--bg:#06140f;--ac:#10b981;--ac2:#a3e635}
+[data-theme=minimal]{--bg:#111;--ac:#e5e5e5;--ac2:#a3a3a3}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(circle at 20% 0,color-mix(in srgb,var(--ac) 25%,transparent),transparent 50%),radial-gradient(circle at 90% 100%,color-mix(in srgb,var(--ac2) 18%,transparent),transparent 45%),var(--bg);background-attachment:fixed;color:var(--tx);font:15px system-ui,Tahoma,sans-serif;min-height:100vh;padding-bottom:80px}
+main{max-width:760px;margin:auto;padding:16px;display:grid;gap:12px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px;backdrop-filter:blur(14px);animation:in .35s}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+h2,h3{margin:0 0 8px}small,.m{opacity:.65}
+button,input,select,textarea{font:inherit;color:inherit;background:#ffffff10;border:1px solid var(--bd);border-radius:12px;padding:9px 12px}
+button{cursor:pointer;transition:.2s}button:hover{background:color-mix(in srgb,var(--ac) 35%,transparent)}
+.p{background:linear-gradient(135deg,var(--ac),var(--ac2));border:0;color:#04101f;font-weight:700}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ac2)}
+form{display:flex;gap:8px;flex-wrap:wrap}form>*{flex:1 1 120px}
+.r{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.bar{height:10px;background:#ffffff18;border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac),var(--ac2));transition:width .6s}
+nav{position:fixed;bottom:0;inset-inline:0;display:flex;overflow-x:auto;background:#070b16d9;backdrop-filter:blur(16px);border-top:1px solid var(--bd);padding:6px;gap:4px;z-index:5}
+nav button{flex:1;min-width:64px;border:0;background:none;font-size:12px}nav .on{background:color-mix(in srgb,var(--ac) 40%,transparent)}
+.done{text-decoration:line-through;opacity:.5}.lock{filter:grayscale(1);opacity:.4}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px}.bars div{flex:1;text-align:center;font-size:11px}.bars i{display:block;background:linear-gradient(var(--ac2),var(--ac));border-radius:6px 6px 0 0;min-height:3px}
+#toast{position:fixed;top:14px;inset-inline:14px;margin:auto;max-width:420px;background:var(--ac);color:#04101f;font-weight:700;padding:12px;border-radius:14px;text-align:center;z-index:9;transition:.3s;transform:translateY(-90px)}#toast.s{transform:none}
+#pal{position:fixed;inset:0;background:#000a;display:none;padding:12vh 16px;z-index:8}#pal.s{display:block}#pal>div{max-width:420px;margin:auto}
+.ch{animation:fl 3s ease-in-out infinite}@keyframes fl{50%{transform:translateY(-6px)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+<div id="app"></div><div id="toast" role="status" aria-live="polite"></div>
+<div id="pal"><div class="c"><input id="pq" placeholder="کجا بروم؟ (Enter)" aria-label="Command palette" style="width:100%"><div id="pl"></div></div></div>
+<script>
+const K='rohi.v1',$=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const def={user:{name:'',xp:0},settings:{theme:'blue'},tasks:[],projects:[],notes:[],focus:[],ach:{},streak:{last:'',n:0},log:{}};
+let S=Object.assign(def,JSON.parse(localStorage.getItem(K)||'{}'));
+const save=()=>localStorage.setItem(K,JSON.stringify(S)),day=(d=new Date())=>d.toISOString().slice(0,10);
+const need=l=>25*l*(l+1)-50; // L1=0, L2=100, L3=250, L4=450...
+const lvl=x=>{let l=1;while(x>=need(l+1))l++;return l};
+const toast=t=>{const e=$('#toast');e.textContent=t;e.classList.add('s');setTimeout(()=>e.classList.remove('s'),2600)};
+const A=[['first_task','🎯 اولین Task',()=>S.tasks.some(t=>t.done)],['first_focus','⏱ اولین Focus',()=>S.focus.length>0],['xp100','✨ ۱۰۰ XP',()=>S.user.xp>=100],['xp500','💎 ۵۰۰ XP',()=>S.user.xp>=500],['xp1000','👑 ۱۰۰۰ XP',()=>S.user.xp>=1000],['streak7','🔥 ۷ روز Streak',()=>S.streak.n>=7],['proj','🏗 Project Master',()=>S.projects.some(p=>p.status=='Completed')],['owl','🦉 Night Owl',()=>S.owl],['early','🐦 Early Bird',()=>S.early]];
+function addXP(n){const o=lvl(S.user.xp),d=day(),h=new Date().getHours();S.user.xp+=n;S.log[d]=(S.log[d]||0)+n;
+ if(S.streak.last!=d){S.streak.n=S.streak.last==day(new Date(Date.now()-864e5))?S.streak.n+1:1;S.streak.last=d}
+ if(h<5)S.owl=1;if(h>=5&&h<8)S.early=1;
+ A.forEach(([id,t,f])=>{if(!S.ach[id]&&f()){S.ach[id]=d;setTimeout(()=>toast('🏆 '+t),1500)}});
+ const l=lvl(S.user.xp);toast(l>o?`🎉 Level Up! سطح ${l}`:`+${n} XP`);save()}
+const mood=()=>{const h=new Date().getHours(),n=S.tasks.filter(t=>t.at==day()).length;return F.run?'thinking':h<6||h>=23?'sleepy':n>=3?'celebrating':n?'happy':'idle'};
+const face={happy:['◕ ◕','M 40 62 Q50 72 60 62'],idle:['• •','M 42 64 L58 64'],thinking:['• ◔','M 42 66 Q50 60 58 66'],celebrating:['★ ★','M 38 60 Q50 78 62 60'],sleepy:['– –','M 44 66 Q50 62 56 66']};
+const char=()=>{const m=mood(),[e,p]=face[m];return `<svg class="ch" viewBox="0 0 100 100" width="90" aria-label="شخصیت: ${m}"><rect x="18" y="20" width="64" height="64" rx="22" fill="var(--ac)" opacity=".85"/><rect x="26" y="30" width="48" height="42" rx="14" fill="#04101f"/><text x="50" y="52" fill="var(--ac2)" font-size="13" text-anchor="middle">${e}</text><path d="${p}" stroke="var(--ac2)" stroke-width="3" fill="none" stroke-linecap="round" transform="translate(0,-4)"/></svg>`};
+let page='home',F={total:1500,left:1500,run:0,end:0,t:null};
+const tabs=[['home','🏠','خانه'],['tasks','✅','Task'],['projects','📁','پروژه'],['notes','📝','یادداشت'],['focus','⏱','Focus'],['stats','📊','آمار'],['ach','🏆','دستاورد'],['set','⚙️','تنظیم']];
+const go=p=>{page=p;render()};
+const form=(id,inner,fn)=>`<form onsubmit="event.preventDefault();${fn}(this)">${inner}<button class="p">افزودن</button></form>`;
+const P={
+home(){const x=S.user.xp,l=lvl(x),a=need(l),b=need(l+1),td=S.tasks.filter(t=>!t.done).slice(0,5);
+ return `<div class="c r"><div><h2>سلام ${esc(S.user.name||'')} 👋</h2><small>${new Date().toLocaleDateString('fa-IR',{weekday:'long',day:'numeric',month:'long'})}</small><p>🔥 Streak: ${S.streak.n} روز</p></div>${char()}</div>
+ <div class="c"><div class="r"><b>Level ${l}</b><small>${x} / ${b} XP</small></div><div class="bar"><i style="width:${(x-a)/(b-a)*100}%"></i></div></div>
+ <div class="c"><h3>Taskهای امروز</h3>${td.map(t=>`<div class="r"><span>${esc(t.title)}</span><button onclick="done(${t.id})">✔ +${t.xp}</button></div>`).join('')||'<p class="m">همه‌چیز انجام شده ✨</p>'}
+ ${form('q','<input name="t" required placeholder="Quick add…" aria-label="Quick add task">','quick')}</div>
+ <div class="c"><h3>پروژه‌های اخیر</h3>${S.projects.slice(-3).map(p=>`<div class="r"><span>${esc(p.name)}</span><small>${p.status} · ${p.pr}%</small></div>`).join('')||'<p class="m">هنوز پروژه‌ای نیست.</p>'}</div>
+ <div class="c m">«${Q[new Date().getDate()%Q.length]}»</div>`},
+tasks(){return `<div class="c"><h3>Task جدید</h3>${form('t','<input name="t" required placeholder="عنوان"><select name="p"><option>Low</option><option selected>Medium</option><option>High</option></select><input name="x" type="number" min="1" value="10" aria-label="XP"><input name="d" type="date" aria-label="Deadline">','addTask')}</div>
+ <div class="c">${S.tasks.map(t=>`<div class="r"><span class="${t.done?'done':''}">${esc(t.title)} <small>${t.p}${t.d?' · '+t.d:''}</small></span><span>${t.done?'':`<button onclick="done(${t.id})">✔ ${t.xp}</button>`}<button aria-label="حذف" onclick="del('tasks',${t.id})">🗑</button></span></div>`).join('')||'<p class="m">Task ای نیست. اولی را بساز!</p>'}</div>`},
+projects(){return `<div class="c"><h3>پروژه جدید</h3>${form('p','<input name="n" required placeholder="نام"><input name="d" type="date"><input name="g" placeholder="Tag">','addProj')}</div>
+ ${S.projects.map(p=>`<div class="c"><div class="r"><b>${esc(p.name)}</b><button aria-label="حذف" onclick="del('projects',${p.id})">🗑</button></div><small>${p.d||''} ${p.g?'#'+esc(p.g):''}</small>
+ <select onchange="upd(${p.id},'status',this.value)">${['Planning','In Progress','Completed','Paused'].map(s=>`<option ${s==p.status?'selected':''}>${s}</option>`).join('')}</select>
+ <input type="range" value="${p.pr}" aria-label="Progress" onchange="upd(${p.id},'pr',+this.value)"> ${p.pr}%</div>`).join('')||'<div class="c m">هنوز پروژه‌ای نداری.</div>'}`},
+notes(){const ns=[...S.notes].sort((a,b)=>b.pin-a.pin);return `<div class="c"><input id="ns" placeholder="🔍 جست‌وجو" oninput="fnote(this.value)" style="width:100%">${form('n','<textarea name="b" required placeholder="یادداشت…"></textarea>','addNote')}</div>
+ ${ns.map(n=>`<div class="c nt"><div class="r"><span>${esc(n.b)}</span><span><button onclick="pin(${n.id})">${n.pin?'📌':'📍'}</button><button aria-label="حذف" onclick="del('notes',${n.id})">🗑</button></span></div></div>`).join('')||'<div class="c m">یادداشتی نیست.</div>'}`},
+focus(){return `<div class="c" style="text-align:center"><h1 id="ft" style="font-size:56px;margin:8px">${fmt(F.left)}</h1>
+ <div class="r"><button onclick="fset(25)">25</button><button onclick="fset(50)">50</button><button onclick="fset(+prompt('دقیقه؟','15')||25)">Custom</button></div><br>
+ <button class="p" onclick="fgo()">${F.run?'⏸ Pause':'▶ Start'}</button> <button onclick="fset(F.total/60)">↺ Reset</button><p class="m">پایان Session = XP برابر دقیقه‌ها</p></div>
+ <div class="c"><h3>History</h3>${S.focus.slice(-8).reverse().map(f=>`<div class="r"><span>${f.d}</span><small>${f.m} دقیقه</small></div>`).join('')||'<p class="m">هنوز Session ای نیست.</p>'}</div>`},
+stats(){const ds=[...Array(7)].map((_,i)=>day(new Date(Date.now()-(6-i)*864e5))),mx=Math.max(1,...ds.map(d=>S.log[d]||0));
+ return `<div class="c"><h3>XP هفتگی</h3><div class="bars">${ds.map(d=>`<div><i style="height:${(S.log[d]||0)/mx*90}px"></i>${d.slice(8)}</div>`).join('')}</div></div>
+ <div class="c g"><div>✅ ${S.tasks.filter(t=>t.done).length}<br><small>Task انجام‌شده</small></div><div>⏱ ${S.focus.length}<br><small>Focus</small></div><div>🔥 ${S.streak.n}<br><small>Streak</small></div><div>📁 ${S.projects.filter(p=>p.status=='Completed').length}<br><small>پروژه تکمیل‌شده</small></div></div>`},
+ach(){return `<div class="c g">${A.map(([id,t])=>`<div class="c ${S.ach[id]?'':'lock'}">${S.ach[id]?t:'🔒 '+t.slice(2)}</div>`).join('')}</div>`},
+set(){return `<div class="c"><h3>Theme</h3><div class="g">${['blue','midnight','cyber','minimal','neon'].map(t=>`<button onclick="S.settings.theme='${t}';save();render()">${t==S.settings.theme?'✔ ':''}${t}</button>`).join('')}</div></div>
+ <div class="c"><h3>داده‌ها</h3><p class="m">⚠️ همه‌چیز فقط روی همین مرورگر ذخیره می‌شود و رمزنگاری نشده؛ اطلاعات حساس ذخیره نکن. پاک کردن داده‌های مرورگر = از دست رفتن. Export بگیر.</p>
+ <button onclick="exp()">⬇ Export JSON</button> <label class="c" style="display:inline-block;padding:9px 12px;cursor:pointer">⬆ Import<input type="file" accept=".json" hidden onchange="imp(this.files[0])"></label> <button style="border-color:var(--wr)" onclick="confirm('همه داده‌ها پاک شود؟')&&(localStorage.removeItem(K),location.reload())">Reset</button></div>`}};
+const Q=['کوچک شروع کن، ادامه بده.','امروز یک قدم از دیروز جلوتری.','تمرکز = قدرت.','Your life. Your system. Your rules.'];
+const fmt=s=>String(Math.floor(s/60)).padStart(2,'0')+':'+String(Math.floor(s%60)).padStart(2,'0');
+const idn=()=>Date.now()+Math.floor(Math.random()*999);
+const quick=f=>{S.tasks.push({id:idn(),title:f.t.value,p:'Medium',xp:10,done:0});save();render()};
+const addTask=f=>{S.tasks.push({id:idn(),title:f.t.value,p:f.p.value,xp:+f.x.value||10,d:f.d.value,done:0});save();render()};
+const addProj=f=>{S.projects.push({id:idn(),name:f.n.value,d:f.d.value,g:f.g.value,status:'Planning',pr:0});save();render()};
+const addNote=f=>{S.notes.push({id:idn(),b:f.b.value,pin:0});save();render()};
+const done=id=>{const t=S.tasks.find(t=>t.id==id);if(t&&!t.done){t.done=1;t.at=day();addXP(t.xp);render()}};
+const del=(k,id)=>{if(confirm('حذف شود؟')){S[k]=S[k].filter(x=>x.id!=id);save();render()}};
+const upd=(id,k,v)=>{const p=S.projects.find(p=>p.id==id);p[k]=v;if(k=='status'&&v=='Completed'){p.pr=100;addXP(50)}save();render()};
+const pin=id=>{const n=S.notes.find(n=>n.id==id);n.pin=+!n.pin;save();render()};
+const fnote=v=>document.querySelectorAll('.nt').forEach(e=>e.style.display=e.textContent.includes(v)?'':'none');
+const fset=m=>{clearInterval(F.t);F={total:m*60,left:m*60,run:0,t:null};render()};
+const tick=()=>{F.left=Math.max(0,Math.round((F.end-Date.now())/1000));const e=$('#ft');if(e)e.textContent=fmt(F.left);
+ if(!F.left){clearInterval(F.t);const m=Math.round(F.total/60);S.focus.push({d:day(),m});F.run=0;F.left=F.total;addXP(m);render()}};
+const fgo=()=>{if(F.run){clearInterval(F.t);F.run=0}else{F.run=1;F.end=Date.now()+F.left*1e3;F.t=setInterval(tick,500)}render()};
+const exp=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='rohi-backup-'+day()+'.json';a.click()};
+const imp=f=>f&&f.text().then(t=>{try{S=Object.assign(def,JSON.parse(t));save();render();toast('Import شد ✔')}catch{toast('فایل نامعتبر است')}});
+function render(){document.documentElement.dataset.theme=S.settings.theme;
+ if(!S.user.name){$('#app').innerHTML=`<main><div class="c" style="text-align:center"><h1>PROJECT: ROHI</h1><p class="m">Your life. Your system. Your rules.</p><form onsubmit="event.preventDefault();S.user.name=this.n.value;save();render()"><input name="n" required placeholder="اسمت چیه؟" aria-label="نام"><button class="p">شروع</button></form></div></main>`;return}
+ $('#app').innerHTML=`<main>${P[page]()}</main><nav>${tabs.map(([k,i,l])=>`<button class="${k==page?'on':''}" onclick="go('${k}')" aria-label="${l}">${i}<br>${l}</button>`).join('')}</nav>`}
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key=='k'){e.preventDefault();$('#pal').classList.add('s');$('#pq').value='';$('#pq').focus();pl('')}if(e.key=='Escape')$('#pal').classList.remove('s')});
+const pl=v=>{window.pm=tabs.filter(t=>(t[2]+t[0]).includes(v));$('#pl').innerHTML=pm.map(t=>`<button style="width:100%;margin-top:6px" onclick="go('${t[0]}');$('#pal').classList.remove('s')">${t[1]} ${t[2]}</button>`).join('')};
+$('#pq').oninput=e=>pl(e.target.value);$('#pq').onkeydown=e=>{if(e.key=='Enter'&&pm[0]){go(pm[0][0]);$('#pal').classList.remove('s')}};
+$('#pal').onclick=e=>e.target.id=='pal'&&e.target.classList.remove('s');
+render();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>
